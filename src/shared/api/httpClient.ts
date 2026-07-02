@@ -9,3 +9,5 @@ export async function httpGet<TResponse>(path: string): Promise<TResponse> {
 
   return response.json() as Promise<TResponse>
 }
+
+// TODO: Implement other HTTP methods (POST) to mock the upload file.

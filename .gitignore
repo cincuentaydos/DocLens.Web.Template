@@ -32,3 +32,13 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# Local environment files
+.env.local
+.env.*.local
+
+# Lambda build artifacts
+tools/floci/lambda/health/function.zip
+
+# Lambda build artifacts
+tools/floci/lambda/health/function.zip

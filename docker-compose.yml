@@ -1,0 +1,19 @@
+services:
+  floci:
+    build:
+      context: ./tools/floci
+    container_name: doclens-floci
+    profiles:
+      - aws-tools
+    working_dir: /workspace
+    volumes:
+      - ${USERPROFILE}/.aws:/root/.aws:ro
+      - ./:/workspace
+    environment:
+      AWS_PROFILE: doclens-poc
+      AWS_REGION: eu-west-1
+      PROJECT_NAME: doclens
+      ENVIRONMENT: dev
+      API_NAME: doclens-poc-api
+      LAMBDA_NAME: doclens-poc-health
+      ROLE_NAME: LabRole

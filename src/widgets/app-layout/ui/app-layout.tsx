@@ -23,6 +23,15 @@ export const AppLayout = () => (
           >
             Inicio
           </NavLink>
+
+          <NavLink
+            className={({ isActive }) =>
+              isActive ? 'nav__link nav__link--active' : 'nav__link'
+            }
+            to={appRoutes.pocApiCheck}
+          >
+            API PoC
+          </NavLink>
         </nav>
       </Container>
     </header>

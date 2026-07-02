@@ -118,3 +118,112 @@ There is no official React-specific `README.md` standard, but there is a widely 
 9. Contribution guide, if needed
 
 This README follows that approach so the template is easier to understand and reuse.
+
+## API Gateway PoC
+
+This template includes a technical PoC to validate the communication between the React front-end and an AWS API Gateway-compatible backend.
+
+### Front-end route
+
+The validation page is available at:
+
+/poc-api-check
+
+It validates this flow:
+
+React front-end
+  -> VITE_API_BASE_URL
+  -> API Gateway
+  -> GET /health
+  -> UI status panel
+
+### Environment variables
+
+Create a local environment file based on .env.example:
+
+cp .env.example .env.local
+
+For local development or a temporary API Gateway endpoint:
+
+VITE_API_BASE_URL=https://example.execute-api.eu-west-1.amazonaws.com
+VITE_APP_ENV=dev
+
+In Windows PowerShell:
+
+Set-Content .env.local "VITE_API_BASE_URL=https://example.execute-api.eu-west-1.amazonaws.com
+VITE_APP_ENV=dev"
+
+### Run the front-end
+
+npm install
+npm run dev
+
+Open:
+
+http://localhost:5173/poc-api-check
+
+### Build
+
+npm run build
+
+The production build is generated under:
+
+dist/
+
+### floci AWS tooling
+
+The repository includes Docker-based AWS CLI tooling under:
+
+tools/floci/
+
+Build the tooling container:
+
+docker compose --profile aws-tools build floci
+
+Check AWS identity:
+
+docker compose --profile aws-tools run --rm floci /workspace/tools/floci/scripts/check-aws.sh
+
+Check required permissions:
+
+docker compose --profile aws-tools run --rm floci /workspace/tools/floci/scripts/check-permissions.sh
+
+Attempt to create the real AWS PoC backend:
+
+docker compose --profile aws-tools run --rm floci /workspace/tools/floci/scripts/create-http-api.sh
+
+This script is prepared to create:
+
+- a minimal Lambda health-check function
+- an HTTP API Gateway
+- a GET /health route
+- a default stage
+- the permission required for API Gateway to invoke the Lambda
+
+### Current AWS limitation
+
+The current VocLabs identity used by the CLI can authenticate and read LabRole, but it does not have all permissions required to create Lambda and API Gateway resources.
+
+Observed denied actions include:
+
+- lambda:ListFunctions
+- lambda:CreateFunction
+- apigatewayv2:GetApis
+
+Therefore, the real AWS API Gateway + Lambda deployment is prepared but remains blocked until the lab environment allows the required permissions or provides an existing API Gateway/Lambda target.
+
+### Future Terraform/CD integration
+
+The repository currently includes an infrastructure scaffold under:
+
+infra/
+
+The intended deployment path for the front-end is:
+
+React + Vite build
+  -> dist/
+  -> S3 static assets bucket
+  -> CloudFront distribution
+  -> API Gateway backend configured through VITE_API_BASE_URL
+
+Terraform and CD will be completed once the final AWS deployment target, account permissions and environment strategy are confirmed.

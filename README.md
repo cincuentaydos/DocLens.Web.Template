@@ -170,47 +170,47 @@ The production build is generated under:
 
 dist/
 
-### floci AWS tooling
+### floci local AWS emulator
 
-The repository includes Docker-based AWS CLI tooling under:
+The repository includes a local PoC under:
 
 tools/floci/
 
-Build the tooling container:
+Start Floci and provision the Lambda + HTTP API Gateway:
 
-docker compose --profile aws-tools build floci
+docker compose up --build floci floci-tools
 
-Check AWS identity:
+If port 4566 is already occupied, override it before starting:
 
-docker compose --profile aws-tools run --rm floci /workspace/tools/floci/scripts/check-aws.sh
+$env:FLOCI_PORT=4567
+docker compose up --build floci floci-tools
 
-Check required permissions:
+This flow creates:
 
-docker compose --profile aws-tools run --rm floci /workspace/tools/floci/scripts/check-permissions.sh
-
-Attempt to create the real AWS PoC backend:
-
-docker compose --profile aws-tools run --rm floci /workspace/tools/floci/scripts/create-http-api.sh
-
-This script is prepared to create:
-
-- a minimal Lambda health-check function
-- an HTTP API Gateway
+- a local Lambda function backed by Floci
 - a GET /health route
-- a default stage
-- the permission required for API Gateway to invoke the Lambda
+- a POST /upload-file route that simulates a document upload and returns HTTP 200
+- a dev stage exposed through Floci's execute-api endpoint
 
-### Current AWS limitation
+The provisioning step also writes the generated front-end environment to:
 
-The current VocLabs identity used by the CLI can authenticate and read LabRole, but it does not have all permissions required to create Lambda and API Gateway resources.
+.env.local.floci
 
-Observed denied actions include:
+Example upload request from PowerShell:
 
-- lambda:ListFunctions
-- lambda:CreateFunction
-- apigatewayv2:GetApis
+$payload = @{
+  fileName = 'contrato.pdf'
+  contentType = 'application/pdf'
+  content = 'ZmFrZS1iYXNlNjQ='
+} | ConvertTo-Json -Compress
 
-Therefore, the real AWS API Gateway + Lambda deployment is prepared but remains blocked until the lab environment allows the required permissions or provides an existing API Gateway/Lambda target.
+Invoke-RestMethod `
+  -Uri "http://localhost:<FLOCI_PORT>/execute-api/<API_ID>/dev/upload-file" `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body $payload
+
+The response body includes the simulated upload metadata and status 200.
 
 ### Future Terraform/CD integration
 

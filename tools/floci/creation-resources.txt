@@ -1,0 +1,30 @@
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
+export AWS_DEFAULT_REGION=us-east-1
+export AWS_ENDPOINT_URL=http://localhost:4566
+export API_NAME=doclens-poc-api
+export LAMBDA_NAME=doclens-poc-upload
+export STAGE_NAME=dev
+
+# Provision the local Lambda + HTTP API on top of Floci.
+docker compose up --build floci floci-tools
+
+# If port 4566 is already in use, pick another one.
+$env:FLOCI_PORT=4567
+docker compose up --build floci floci-tools
+
+# Inspect the generated base URL for the front-end.
+Get-Content .env.local.floci
+
+# Simulate a document upload from PowerShell.
+$payload = @{
+  fileName = 'contrato.pdf'
+  contentType = 'application/pdf'
+  content = 'ZmFrZS1iYXNlNjQ='
+} | ConvertTo-Json -Compress
+
+Invoke-RestMethod `
+  -Uri "http://localhost:$env:FLOCI_PORT/execute-api/<API_ID>/dev/upload-file" `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body $payload

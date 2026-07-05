@@ -305,3 +305,7 @@
     flex-direction: column;
   }
 }
+
+.upload-file-panel__native-input {
+  display: none;
+}

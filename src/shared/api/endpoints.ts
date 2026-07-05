@@ -1,4 +1,4 @@
 export const ENDPOINTS = {
   health: '/health',
-  uploadFile: '/upload-file'
+  uploadFile: '/upload-file',
 } as const

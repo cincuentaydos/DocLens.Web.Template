@@ -15,11 +15,17 @@ This repository is meant to be the starting point for the team's frontend projec
 - ESLint
 - GitHub Actions
 - Terraform (base scaffolding)
+- Docker Compose
+- floci local AWS emulator
+- Local API Gateway
+- Local Lambda
 
 ## Requirements
 
 - Node.js 22 or higher
 - npm 10 or higher
+- Docker Desktop
+- Docker Compose
 
 ## Getting Started
 
@@ -45,12 +51,11 @@ The application will be available in the local Vite development environment.
 .github/
   workflows/              # active GitHub Actions workflows
 infra/
-  terraform/
-    environments/
-      dev/
-      staging/
-      production/
-    modules/              # reusable Terraform modules
+  environments/
+    dev/
+    staging/
+    production/
+  modules/
 src/
   app/                    # bootstrap, providers, routing, and global styles
   pages/                  # full pages
@@ -58,6 +63,8 @@ src/
   features/               # business use cases
   entities/               # domain entities
   shared/                 # UI, config, utilities, and cross-cutting pieces
+  tools/
+  floci/                  # local API Gateway and Lambda PoC tooling
 ```
 
 > The `processes` layer is not included by default because in modern FSD it is usually reserved for truly complex global flows.
@@ -80,6 +87,9 @@ src/
 - Base setup ready to scale with FSD
 - `infra/terraform` structure prepared for IaC
 - GitHub Actions workflows for Pull Request, CI, and CD
+- Local API Gateway PoC using floci
+- Front-end health check against local API Gateway
+- Front-end file upload flow against local API Gateway and Lambda
 
 ## GitHub Actions
 
@@ -95,6 +105,208 @@ The **`infra/terraform/`** directory is prepared to separate:
 
 - `environments/`: environment-specific configuration
 - `modules/`: shared and reusable modules
+
+## Local API Gateway PoC with floci
+
+This template includes a local technical PoC that validates the communication between the React front-end and an API Gateway environment powered by **floci**.
+
+The PoC validates two local flows:
+
+```text
+React front-end
+  -> VITE_API_BASE_URL
+  -> floci local API Gateway
+  -> local Lambda
+  -> GET /health
+  -> 200 response
+```
+
+```text
+React front-end
+  -> file upload form
+  -> VITE_API_BASE_URL
+  -> floci local API Gateway
+  -> local Lambda
+  -> POST /upload-file
+  -> 200 response
+```
+
+### Front-end route
+
+The validation page is available at:
+
+```text
+/poc-api-check
+```
+
+The page is also linked from:
+
+* the top navigation as `API PoC`
+* the home page through the `Validar API Gateway` action
+
+### Start the local API Gateway
+
+Run the local floci environment and the helper container that creates the local API Gateway, routes and Lambda integration:
+
+```bash
+docker compose up --build floci floci-tools
+```
+
+When the setup finishes successfully, the terminal prints something similar to:
+
+```text
+API Gateway ready.
+
+Base URL:
+http://localhost:4566/execute-api/<api-id>/dev
+
+Health endpoint:
+http://localhost:4566/execute-api/<api-id>/dev/health
+
+Upload endpoint:
+http://localhost:4566/execute-api/<api-id>/dev/upload-file
+
+Environment file written to:
+/workspace/.env.local.floci
+```
+
+The generated API ID can change between executions, so the API URL should not be hardcoded in the source code.
+
+### Configure the front-end environment
+
+After floci generates `.env.local.floci`, copy it to `.env.local`:
+
+```powershell
+Copy-Item .env.local.floci .env.local -Force
+```
+
+The resulting `.env.local` should contain a value similar to:
+
+```env
+VITE_API_BASE_URL=http://localhost:4566/execute-api/<api-id>/dev
+VITE_APP_ENV=local
+```
+
+If `VITE_APP_ENV` is missing, add it manually:
+
+```powershell
+Add-Content .env.local "VITE_APP_ENV=local"
+```
+
+> `.env.local` and `.env.local.floci` are local generated files and must not be committed.
+
+### Run the front-end
+
+In another terminal, start Vite:
+
+```bash
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:5173/poc-api-check
+```
+
+### Test the health endpoint from terminal
+
+After running floci and copying `.env.local.floci` to `.env.local`, run:
+
+```powershell
+$baseUrl = (Get-Content .env.local | Where-Object { $_ -like "VITE_API_BASE_URL=*" }) -replace "VITE_API_BASE_URL=", ""
+
+Invoke-RestMethod "$baseUrl/health"
+```
+
+Expected result:
+
+```text
+status      : ok
+service     : ...
+environment : local
+timestamp   : ...
+```
+
+### Test the upload endpoint from terminal
+
+Create a test file:
+
+```powershell
+"hello doclens" | Set-Content test-upload.txt
+```
+
+Upload it through the local API Gateway:
+
+```powershell
+$baseUrl = (Get-Content .env.local | Where-Object { $_ -like "VITE_API_BASE_URL=*" }) -replace "VITE_API_BASE_URL=", ""
+
+curl.exe -i -X POST -F "file=@test-upload.txt" "$baseUrl/upload-file"
+```
+
+Expected result:
+
+```text
+HTTP/1.1 200
+```
+
+or a JSON response indicating that the upload request reached the Lambda successfully.
+
+### Test from the browser
+
+With floci running and the front-end started:
+
+1. Open `http://localhost:5173/poc-api-check`
+2. Click `Check API Gateway`
+3. Confirm that the health response is displayed
+4. Select a file in the upload card
+5. Click `Upload file to Lambda`
+6. Confirm that the upload response is displayed with a successful status
+
+### floci services
+
+The Docker Compose setup includes:
+
+* `floci`: local AWS emulator
+* `floci-tools`: helper container that creates the local API Gateway, routes and Lambda integration
+
+The important local endpoints are generated by floci and written to:
+
+```text
+.env.local.floci
+```
+
+### Local-only files
+
+The following files should remain local only and must not be committed:
+
+```text
+.env.local
+.env.local.floci
+test-upload.txt
+dist/
+node_modules/
+tools/floci/lambda/upload-api/function.zip
+```
+
+### Future real AWS deployment
+
+The current working PoC uses floci locally and does not require real AWS permissions to demonstrate the front-end to API Gateway to Lambda flow.
+
+A future real AWS deployment can reuse the same front-end contract:
+
+```env
+VITE_API_BASE_URL=https://xxxxx.execute-api.eu-west-1.amazonaws.com/dev
+```
+
+The intended production-like flow remains:
+
+```text
+React + Vite
+  -> API Gateway
+  -> Lambda
+  -> document processing services
+```
 
 ## How to Reuse This Template
 
@@ -119,111 +331,3 @@ There is no official React-specific `README.md` standard, but there is a widely 
 
 This README follows that approach so the template is easier to understand and reuse.
 
-## API Gateway PoC
-
-This template includes a technical PoC to validate the communication between the React front-end and an AWS API Gateway-compatible backend.
-
-### Front-end route
-
-The validation page is available at:
-
-/poc-api-check
-
-It validates this flow:
-
-React front-end
-  -> VITE_API_BASE_URL
-  -> API Gateway
-  -> GET /health
-  -> UI status panel
-
-### Environment variables
-
-Create a local environment file based on .env.example:
-
-cp .env.example .env.local
-
-For local development or a temporary API Gateway endpoint:
-
-VITE_API_BASE_URL=https://example.execute-api.eu-west-1.amazonaws.com
-VITE_APP_ENV=dev
-
-In Windows PowerShell:
-
-Set-Content .env.local "VITE_API_BASE_URL=https://example.execute-api.eu-west-1.amazonaws.com
-VITE_APP_ENV=dev"
-
-### Run the front-end
-
-npm install
-npm run dev
-
-Open:
-
-http://localhost:5173/poc-api-check
-
-### Build
-
-npm run build
-
-The production build is generated under:
-
-dist/
-
-### floci local AWS emulator
-
-The repository includes a local PoC under:
-
-tools/floci/
-
-Start Floci and provision the Lambda + HTTP API Gateway:
-
-docker compose up --build floci floci-tools
-
-If port 4566 is already occupied, override it before starting:
-
-$env:FLOCI_PORT=4567
-docker compose up --build floci floci-tools
-
-This flow creates:
-
-- a local Lambda function backed by Floci
-- a GET /health route
-- a POST /upload-file route that simulates a document upload and returns HTTP 200
-- a dev stage exposed through Floci's execute-api endpoint
-
-The provisioning step also writes the generated front-end environment to:
-
-.env.local.floci
-
-Example upload request from PowerShell:
-
-$payload = @{
-  fileName = 'contrato.pdf'
-  contentType = 'application/pdf'
-  content = 'ZmFrZS1iYXNlNjQ='
-} | ConvertTo-Json -Compress
-
-Invoke-RestMethod `
-  -Uri "http://localhost:<FLOCI_PORT>/execute-api/<API_ID>/dev/upload-file" `
-  -Method Post `
-  -ContentType 'application/json' `
-  -Body $payload
-
-The response body includes the simulated upload metadata and status 200.
-
-### Future Terraform/CD integration
-
-The repository currently includes an infrastructure scaffold under:
-
-infra/
-
-The intended deployment path for the front-end is:
-
-React + Vite build
-  -> dist/
-  -> S3 static assets bucket
-  -> CloudFront distribution
-  -> API Gateway backend configured through VITE_API_BASE_URL
-
-Terraform and CD will be completed once the final AWS deployment target, account permissions and environment strategy are confirmed.

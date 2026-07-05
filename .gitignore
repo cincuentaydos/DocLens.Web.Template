@@ -42,3 +42,8 @@ tools/floci/lambda/health/function.zip
 
 # Lambda build artifacts
 tools/floci/lambda/health/function.zip
+
+# Local generated files
+.env.local.floci
+test-upload.txt
+tools/floci/lambda/upload-api/function.zip

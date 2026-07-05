@@ -1,5 +1,6 @@
 import { Button } from '@shared/ui/button'
 import { Container } from '@shared/ui/container'
+import { appRoutes } from '@shared/config/routes'
 import {
   quickStartSteps,
   referenceSections,
@@ -22,8 +23,8 @@ export const HomePage = () => (
             <Button as="a" href="#fsd-structure">
               Ver estructura
             </Button>
-            <Button as="a" href="#next-steps" variant="secondary">
-              Primeros pasos
+            <Button as="a" href={appRoutes.pocApiCheck} variant="secondary">
+              Validar API Gateway
             </Button>
           </div>
         </article>

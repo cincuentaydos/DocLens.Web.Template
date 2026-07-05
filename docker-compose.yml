@@ -1,0 +1,47 @@
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: doclens-floci
+    ports:
+      - "${FLOCI_PORT:-4566}:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/app/data
+    environment:
+      FLOCI_HOSTNAME: floci
+      FLOCI_BASE_URL: http://floci:4566
+      FLOCI_SERVICES_DOCKER_NETWORK: doclens_floci
+    networks:
+      doclens_floci:
+        aliases:
+          - localhost.floci.io
+
+  floci-tools:
+    build:
+      context: ./tools/floci
+    container_name: doclens-floci-tools
+    depends_on:
+      - floci
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://floci:4566
+      API_NAME: doclens-poc-api
+      LAMBDA_NAME: doclens-poc-upload
+      FLOCI_PUBLIC_PORT: ${FLOCI_PORT:-4566}
+      STAGE_NAME: dev
+    command: ["/workspace/tools/floci/scripts/create-http-api.sh"]
+    networks:
+      - doclens_floci
+
+volumes:
+  floci-data:
+
+networks:
+  doclens_floci:
+    name: doclens_floci

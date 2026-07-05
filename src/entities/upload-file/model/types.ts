@@ -1,10 +1,12 @@
 export type UploadFileResult = {
   status: 'ok' | 'error'
+  httpStatus: number
+  uploaded: boolean
   service: string
-  filename?: string
-  size?: number
-  contentType?: string
-  message?: string
-  requestId?: string
-  timestamp?: string
+  message: string
+  fileName: string
+  contentType: string
+  parseMode: string
+  size: number
+  timestamp: string
 }

@@ -94,7 +94,7 @@ export function UploadFileForm() {
           <p>Status: {state.data.status}</p>
           <p>Service: {state.data.service}</p>
           <p>Message: {state.data.message ?? 'File uploaded successfully.'}</p>
-          <p>Filename: {state.data.filename ?? selectedFile?.name ?? 'unknown'}</p>
+          <p>Filename: {state.data.fileName ?? selectedFile?.name ?? 'unknown'}</p>
           <p>Timestamp: {state.data.timestamp ?? 'not provided'}</p>
         </div>
       )}

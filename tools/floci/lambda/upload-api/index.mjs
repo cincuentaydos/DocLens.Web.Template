@@ -58,6 +58,7 @@ export const handler = async (event) => {
   if (method === 'GET' && path.endsWith('/health')) {
     return response(200, {
       status: 'ok',
+      httpStatus: 200,
       service: 'doclens-api-gateway',
       environment: process.env.APP_ENV ?? 'local',
       timestamp: new Date().toISOString(),
@@ -84,7 +85,10 @@ export const handler = async (event) => {
         : JSON.stringify(payload.content ?? '')
 
     return response(200, {
+      status: 'ok',
+      httpStatus: 200,
       uploaded: true,
+      service: 'doclens-upload-lambda',
       message: 'Documento recibido correctamente',
       fileName,
       contentType,

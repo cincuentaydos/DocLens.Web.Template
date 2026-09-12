@@ -1,6 +1,9 @@
 name: CD
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -8,8 +11,9 @@ on:
         required: true
         type: choice
         options:
-          - staging
-          - production
+          - sbx
+          - prod
+        default: sbx
       ref:
         description: Git ref to deploy
         required: true
@@ -18,18 +22,21 @@ on:
 
 permissions:
   contents: read
+  id-token: write # required for aws-actions/configure-aws-credentials to assume the OIDC role
 
 jobs:
   deploy:
     name: Deploy application
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    # push events carry no `inputs` — default to sbx, the only environment
+    # with a deploy role provisioned so far (see DocLens.Infra/governance).
+    environment: ${{ github.event.inputs.environment || 'sbx' }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -43,8 +50,14 @@ jobs:
       - name: Run build
         run: npm run build
 
-      - name: Placeholder deploy step
-        run: |
-          echo "Replace this step with your deployment command."
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Ref: ${{ inputs.ref }}"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: eu-west-1
+
+      - name: Sync build to S3
+        run: aws s3 sync dist/ "s3://${{ vars.S3_BUCKET }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"

@@ -30,7 +30,12 @@ jobs:
     runs-on: ubuntu-latest
     # push events carry no `inputs` — default to sbx, the only environment
     # with a deploy role provisioned so far (see DocLens.Infra/governance).
-    environment: ${{ github.event.inputs.environment || 'sbx' }}
+    # `environment.url` makes the link show up on this run, on the commit's
+    # status, and on the repo's Environments page — set SITE_URL per
+    # environment alongside the other three vars.
+    environment:
+      name: ${{ github.event.inputs.environment || 'sbx' }}
+      url: ${{ vars.SITE_URL }}
 
     steps:
       - name: Checkout repository
@@ -61,3 +66,6 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"
+
+      - name: Print deployment URL
+        run: echo "### Deployed to ${{ vars.SITE_URL }}" >> "$GITHUB_STEP_SUMMARY"
